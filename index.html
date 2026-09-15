@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>넷플릭스 인증 메일함</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #141414;
+      color: #fff;
+      padding: 16px;
+    }
+    .container { max-width: 680px; margin: 0 auto; }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .title { color: #E50914; font-size: 1.4rem; font-weight: bold; }
+    .refresh-btn {
+      background: #E50914;
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .refresh-btn:disabled { background: #555; cursor: not-allowed; }
+    .card {
+      background: #1f1f1f;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .meta-subject { font-size: 1.1rem; font-weight: 600; margin-bottom: 8px; }
+    .meta-date { font-size: 0.85rem; color: #aaa; }
+    .mail-container {
+      background: #ffffff;
+      border-radius: 8px;
+      padding: 16px;
+      color: #000;
+      min-height: 200px;
+      overflow-x: auto;
+    }
+    .loading { text-align: center; color: #888; padding: 40px; }
+    .error-box { color: #ff5555; background: #2a1515; padding: 12px; border-radius: 6px; margin-bottom: 12px; display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="title">NETFLIX CODE</div>
+      <button class="refresh-btn" id="reloadBtn" onclick="fetchMail()">새로고침</button>
+    </div>
+
+    <div id="errorAlert" class="error-box"></div>
+
+    <div class="card">
+      <div id="mailSubject" class="meta-subject">불러오는 중...</div>
+      <div id="mailDate" class="meta-date">수신 시각: -</div>
+    </div>
+
+    <div class="mail-container" id="mailBody">
+      <div class="loading">최신 인증 메일을 조회하고 있습니다...</div>
+    </div>
+  </div>
+
+  <script>
+    // 1. 여기에 구글 앱스 스크립트 배포 URL을 입력하세요.
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzICoc1l1f3rll78v2NLOi06QtVor5m8U7L7YIPkSP9IFKWCG5pQDUix1zBASpNy-E-ow/exec?pin=9617";
+    
+    // URL에 ?pin=1234 가 있으면 그것을 쓰고, 없으면 기본값(1234) 사용
+    const urlParams = new URLSearchParams(window.location.search);
+    const PIN = urlParams.get('pin') || "1234";
+
+    function fetchMail() {
+      const btn = document.getElementById("reloadBtn");
+      const errorBox = document.getElementById("errorAlert");
+      btn.disabled = true;
+      btn.innerText = "조회 중...";
+      errorBox.style.display = "none";
+
+      // JSONP 방식을 사용하여 CORS 우회 및 즉각 수신
+      const callbackName = "handleMailData_" + Math.floor(Math.random() * 100000);
+      window[callbackName] = function(data) {
+        btn.disabled = false;
+        btn.innerText = "새로고침";
+
+        if (!data.success) {
+          errorBox.innerText = data.error || "오류가 발생했습니다.";
+          errorBox.style.display = "block";
+          return;
+        }
+
+        document.getElementById("mailSubject").innerText = data.subject;
+        document.getElementById("mailDate").innerText = "수신 시각: " + data.date;
+        document.getElementById("mailBody").innerHTML = data.body;
+
+        // 정리
+        document.head.removeChild(script);
+        delete window[callbackName];
+      };
+
+      const script = document.createElement("script");
+      script.src = `${GAS_API_URL}?pin=${encodeURIComponent(PIN)}&callback=${callbackName}`;
+      script.onerror = function() {
+        btn.disabled = false;
+        btn.innerText = "새로고침";
+        errorBox.innerText = "데이터를 불러오지 못했습니다. 네트워크 상태나 스크립트 설정을 확인하세요.";
+        errorBox.style.display = "block";
+      };
+      document.head.appendChild(script);
+    }
+
+    // 초기 실행
+    fetchMail();
+  </script>
+</body>
+</html>
